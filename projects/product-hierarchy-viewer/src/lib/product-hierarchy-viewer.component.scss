@@ -1,0 +1,79 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.phv-container {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:host ::ng-deep .phv-link {
+  stroke: rgba(67, 85, 85, 0.35);
+  stroke-dasharray: 2 8;
+  animation: phv-dash 6s linear infinite;
+}
+
+:host ::ng-deep .phv-node-visual {
+  animation: phv-pop 0.4s ease both;
+  animation-delay: var(--pop-delay, 0s);
+  transition: transform 0.16s ease;
+}
+
+:host ::ng-deep .phv-node-visual:hover {
+  transform: translateY(-4px);
+}
+
+:host ::ng-deep .phv-node circle {
+  filter: drop-shadow(0 6px 12px rgba(15, 23, 42, 0.18));
+  transition: transform 0.2s ease, stroke 0.2s ease, fill 0.2s ease;
+}
+
+:host ::ng-deep .phv-node.is-selected circle {
+  stroke: #0b1f1a;
+  stroke-width: 3.2;
+  transform: scale(1.06);
+  animation: phv-pulse 1.8s ease-in-out infinite;
+}
+
+:host ::ng-deep .phv-node text {
+  font-family: var(--font-body);
+  font-size: 12px;
+  fill: var(--ink-800);
+}
+
+@keyframes phv-dash {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+@keyframes phv-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes phv-pulse {
+  0% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(15, 118, 110, 0.12);
+  }
+  100% {
+    box-shadow: none;
+  }
+}

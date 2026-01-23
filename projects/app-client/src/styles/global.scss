@@ -1,0 +1,30 @@
+@use './tokens';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink-900);
+}
+
+body {
+  background:
+    var(--bg-grad-1),
+    var(--bg-grad-2),
+    var(--bg-grad-3);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(217, 119, 69, 0.25);
+}
+
+app-root {
+  display: block;
+  height: 100%;
+}

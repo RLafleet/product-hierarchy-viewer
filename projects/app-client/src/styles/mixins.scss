@@ -1,0 +1,31 @@
+@mixin card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+@mixin pill($bg, $color, $border) {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $bg;
+  color: $color;
+  border: 1px solid $border;
+}
+
+@mixin glass($blur: 12px, $opacity: 0.8) {
+  background: rgba(255, 255, 255, $opacity);
+  backdrop-filter: blur($blur);
+}
+
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin rise-in($delay: 0s) {
+  animation: rise-in 0.7s ease both $delay;
+}

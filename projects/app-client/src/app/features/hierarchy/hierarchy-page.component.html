@@ -1,0 +1,197 @@
+<div class="hierarchy-page">
+  <header class="page-hero">
+    <div class="hero-copy">
+      <span class="hero-kicker">Производственный контур</span>
+      <h1>Визуализация иерархии изделий</h1>
+      <p>
+        Переходите между уровнями структуры, фиксируйте статус узлов и смотрите
+        критические точки в одной карте.
+      </p>
+      <div class="hero-tags">
+        <span class="tag">MVP</span>
+        <span class="tag">Пан/Зум</span>
+        <span class="tag">Двойной клик</span>
+      </div>
+    </div>
+
+    <div class="hero-metrics">
+      <div class="metric-card stagger">
+        <span class="metric-label">Всего узлов</span>
+        <span class="metric-value">{{ summary.total }}</span>
+      </div>
+      <div class="metric-card stagger">
+        <span class="metric-label">В работе</span>
+        <span class="metric-value">{{ summary.inProgress }}</span>
+      </div>
+      <div class="metric-card stagger">
+        <span class="metric-label">Блокировано</span>
+        <span class="metric-value">{{ summary.blocked }}</span>
+      </div>
+      <div class="metric-card stagger">
+        <span class="metric-label">Готово</span>
+        <span class="metric-value">{{ summary.done }}</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="viewer-panel card">
+    <div class="viewer-header">
+      <div>
+        <h2>Карта структуры</h2>
+        <p>Колесо мыши — масштаб, drag — панорамирование, double click — сворачивание.</p>
+      </div>
+      <div class="legend">
+        <span class="legend-item status-active">Активно</span>
+        <span class="legend-item status-in-progress">В работе</span>
+        <span class="legend-item status-blocked">Блок</span>
+        <span class="legend-item status-review">Проверка</span>
+        <span class="legend-item status-waiting">Ожидание</span>
+        <span class="legend-item status-done">Готово</span>
+      </div>
+    </div>
+
+    <div class="viewer-shell">
+      <product-hierarchy-viewer
+        class="viewer"
+        [data]="data"
+        [config]="config"
+        [focusNodeId]="focusNodeId"
+        (nodeSelected)="onNodeSelected($event)"
+        (nodeToggled)="onNodeToggled($event)"
+        (nodeUpdated)="onNodeUpdated($event)"
+      ></product-hierarchy-viewer>
+      <div class="viewer-hint">Контекстный клик — пометить обновление</div>
+    </div>
+  </section>
+
+  <aside class="details-panel card">
+    <div class="details-header">
+      <h2>Детали узла</h2>
+      <p>Выберите узел в дереве слева.</p>
+    </div>
+
+    <ng-container *ngIf="selectedNode; else emptyState">
+      <div class="details-card">
+        <div class="details-title">
+          <div>
+            <h3>{{ selectedNode.name }}</h3>
+            <p class="details-path" *ngIf="selectedPath">{{ selectedPath }}</p>
+          </div>
+          <div class="details-tags">
+            <span class="status-pill" [ngClass]="statusClass(selectedNode.status)">
+              {{ getStatusLabel(selectedNode.status) }}
+            </span>
+            <span class="type-pill">{{ getTypeLabel(selectedNode.type) }}</span>
+          </div>
+        </div>
+
+        <dl class="details-grid">
+          <div>
+            <dt>ID</dt>
+            <dd>{{ selectedNode.id }}</dd>
+          </div>
+          <div>
+            <dt>Тип</dt>
+            <dd>{{ getTypeLabel(selectedNode.type) }}</dd>
+          </div>
+          <div>
+            <dt>Статус</dt>
+            <dd>{{ getStatusLabel(selectedNode.status) }}</dd>
+          </div>
+          <div>
+            <dt>Срок</dt>
+            <dd>{{ formatDeadline(selectedNode.deadline) }}</dd>
+          </div>
+          <div>
+            <dt>Лист</dt>
+            <dd>{{ selectedNode.isLeaf || !selectedNode.children?.length ? 'Да' : 'Нет' }}</dd>
+          </div>
+          <div *ngIf="selectedNode.meta?.plannedFinish">
+            <dt>Плановая готовность</dt>
+            <dd>{{ formatDeadline(selectedNode.meta?.plannedFinish as string) }}</dd>
+          </div>
+          <div *ngIf="selectedNode.meta?.responsible">
+            <dt>Ответственный</dt>
+            <dd>{{ selectedNode.meta?.responsible }}</dd>
+          </div>
+          <div *ngIf="selectedNode.meta?.batch">
+            <dt>Партия</dt>
+            <dd>{{ selectedNode.meta?.batch }}</dd>
+          </div>
+          <div *ngIf="selectedNode.meta?.line">
+            <dt>Линия</dt>
+            <dd>{{ selectedNode.meta?.line }}</dd>
+          </div>
+        </dl>
+
+        <div class="details-note">
+          Последнее обновление фиксируется через контекстный клик.
+        </div>
+      </div>
+    </ng-container>
+
+    <ng-template #emptyState>
+      <div class="details-empty">Нет выбранного узла</div>
+    </ng-template>
+  </aside>
+
+  <section class="map-panel card">
+    <div class="map-header">
+      <h3>Карта деталей</h3>
+      <p>Быстрый переход к узлам дерева.</p>
+    </div>
+    <div class="map-grid">
+      <div class="map-item" *ngFor="let node of detailMap">
+        <div>
+          <p class="map-title">{{ node.name }}</p>
+          <p class="map-meta">{{ getTypeLabel(node.type) }} · {{ getStatusLabel(node.status) }}</p>
+          <p class="map-deadline">Срок: {{ formatDeadline(node.deadline) }}</p>
+        </div>
+        <button class="map-btn" type="button" (click)="jumpToNode(node.id)">Показать</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="dash-panel card">
+    <div class="dash-header">
+      <h3>Дашборды уровня</h3>
+      <p>Метрики для выбранного узла (или всего дерева).</p>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-item" *ngFor="let metric of dashboardConfig">
+        <div class="dash-label-row">
+          <span>{{ metric.label }}</span>
+          <span class="dash-value">{{ scopedSummary[metric.key] }}</span>
+        </div>
+        <div class="dash-bar">
+          <span
+            class="dash-fill"
+            [style.background]="metric.color"
+            [style.width.%]="scopedSummary.total ? (scopedSummary[metric.key] / scopedSummary.total) * 100 : 0"
+          ></span>
+        </div>
+      </div>
+      <div class="dash-item">
+        <div class="dash-label-row">
+          <span>Готовность, %</span>
+          <span class="dash-value">{{ scopedSummary.completionPct }}%</span>
+        </div>
+        <div class="dash-bar">
+          <span class="dash-fill ready" [style.width.%]="scopedSummary.completionPct"></span>
+        </div>
+      </div>
+      <div class="dash-item">
+        <div class="dash-label-row">
+          <span>Просрочено</span>
+          <span class="dash-value">{{ scopedSummary.overdue }}</span>
+        </div>
+        <div class="dash-bar">
+          <span
+            class="dash-fill overdue"
+            [style.width.%]="scopedSummary.total ? (scopedSummary.overdue / scopedSummary.total) * 100 : 0"
+          ></span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
