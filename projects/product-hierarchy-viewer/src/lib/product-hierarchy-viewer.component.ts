@@ -27,6 +27,7 @@ export class ProductHierarchyViewerComponent
 {
   @Input() data: HierarchyNode[] = [];
   @Input() config: ViewerConfig = {};
+  @Input() focusNodeId: string | null = null;
 
   @Output() nodeSelected = new EventEmitter<HierarchyNode>();
   @Output() nodeToggled = new EventEmitter<HierarchyNode>();
@@ -50,6 +51,10 @@ export class ProductHierarchyViewerComponent
         onNodeUpdated: (update) => this.nodeUpdated.emit(update),
       }
     );
+
+    if (this.focusNodeId) {
+      this.viewerService.focus(this.viewer, this.focusNodeId);
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -59,12 +64,17 @@ export class ProductHierarchyViewerComponent
 
     const dataChanged = changes['data'];
     const configChanged = changes['config'];
+    const focusChanged = changes['focusNodeId'];
 
     if (dataChanged || configChanged) {
       this.viewer.update(
         dataChanged ? this.data : undefined,
         configChanged ? this.config : undefined
       );
+    }
+
+    if (focusChanged) {
+      this.viewerService.focus(this.viewer, this.focusNodeId ?? null);
     }
   }
 

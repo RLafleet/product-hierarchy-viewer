@@ -26,4 +26,8 @@ export class HierarchyViewerService {
 
     return core;
   }
+
+  focus(core: HierarchyViewerCore, nodeId: string | null): void {
+    core.focusNode(nodeId);
+  }
 }

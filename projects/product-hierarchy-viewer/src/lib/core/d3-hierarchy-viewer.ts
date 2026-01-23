@@ -214,6 +214,20 @@ export class D3HierarchyViewer
     this.updateSelection();
   }
 
+  focusNode(nodeId: string | null): void {
+    this.selectedNodeId = nodeId;
+    this.updateSelection();
+
+    if (!nodeId) {
+      return;
+    }
+
+    const found = this.findNodeById(nodeId, this.latestData);
+    if (found) {
+      this.callbacks.onNodeSelected?.(found);
+    }
+  }
+
   private renderLinks(layout: HierarchyLayout): void {
     if (!this.linksGroup) {
       return;
@@ -527,6 +541,21 @@ export class D3HierarchyViewer
       color: style.color ?? '#5b8def',
       borderColor: style.borderColor ?? '#1c2d4a',
     };
+  }
+
+  private findNodeById(id: string, nodes: HierarchyNode[]): HierarchyNode | null {
+    for (const node of nodes) {
+      if (node.id === id) {
+        return node;
+      }
+      if (node.children?.length) {
+        const found = this.findNodeById(id, node.children);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return null;
   }
 
   private createSvgElement<T extends keyof SVGElementTagNameMap>(

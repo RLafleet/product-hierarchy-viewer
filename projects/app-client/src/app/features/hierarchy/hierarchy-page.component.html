@@ -1,16 +1,16 @@
 <div class="hierarchy-page">
   <header class="page-hero">
     <div class="hero-copy">
-      <span class="hero-kicker">Производственный контур</span>
-      <h1>Визуализация иерархии изделий</h1>
+      <span class="hero-kicker">Визуализация производственного дерева</span>
+      <h1>Штаб дипломного проекта</h1>
       <p>
-        Переходите между уровнями структуры, фиксируйте статус узлов и смотрите
-        критические точки в одной карте.
+        Контроль статусов, сроков и критичных узлов изделия в одном окне. Панорама дерева, карточка детали,
+        мини-карта и дашборды по уровням.
       </p>
       <div class="hero-tags">
         <span class="tag">MVP</span>
-        <span class="tag">Пан/Зум</span>
-        <span class="tag">Двойной клик</span>
+        <span class="tag">SVG-движок</span>
+        <span class="tag">Производство</span>
       </div>
     </div>
 
@@ -24,7 +24,7 @@
         <span class="metric-value">{{ summary.inProgress }}</span>
       </div>
       <div class="metric-card stagger">
-        <span class="metric-label">Блокировано</span>
+        <span class="metric-label">Блокеры</span>
         <span class="metric-value">{{ summary.blocked }}</span>
       </div>
       <div class="metric-card stagger">
@@ -37,15 +37,15 @@
   <section class="viewer-panel card">
     <div class="viewer-header">
       <div>
-        <h2>Карта структуры</h2>
-        <p>Колесо мыши — масштаб, drag — панорамирование, double click — сворачивание.</p>
+        <h2>Дерево изделий</h2>
+        <p>Режим пилота: колесо — зум, drag — панорама, double click — раскрытие узла.</p>
       </div>
       <div class="legend">
         <span class="legend-item status-active">Активно</span>
         <span class="legend-item status-in-progress">В работе</span>
-        <span class="legend-item status-blocked">Блок</span>
-        <span class="legend-item status-review">Проверка</span>
-        <span class="legend-item status-waiting">Ожидание</span>
+        <span class="legend-item status-blocked">Блокеры</span>
+        <span class="legend-item status-review">На проверке</span>
+        <span class="legend-item status-waiting">Ожидает</span>
         <span class="legend-item status-done">Готово</span>
       </div>
     </div>
@@ -60,14 +60,14 @@
         (nodeToggled)="onNodeToggled($event)"
         (nodeUpdated)="onNodeUpdated($event)"
       ></product-hierarchy-viewer>
-      <div class="viewer-hint">Контекстный клик — пометить обновление</div>
+      <div class="viewer-hint">Наведи и изучай карточку узла, панорамируй колесом и захватом.</div>
     </div>
   </section>
 
   <aside class="details-panel card">
     <div class="details-header">
-      <h2>Детали узла</h2>
-      <p>Выберите узел в дереве слева.</p>
+      <h2>Карточка узла</h2>
+      <p>Сверка сроков, статусов и ответственных по выбранному элементу.</p>
     </div>
 
     <ng-container *ngIf="selectedNode; else emptyState">
@@ -99,11 +99,11 @@
             <dd>{{ getStatusLabel(selectedNode.status) }}</dd>
           </div>
           <div>
-            <dt>Срок</dt>
+            <dt>Дедлайн</dt>
             <dd>{{ formatDeadline(selectedNode.deadline) }}</dd>
           </div>
           <div>
-            <dt>Лист</dt>
+            <dt>Лист?</dt>
             <dd>{{ selectedNode.isLeaf || !selectedNode.children?.length ? 'Да' : 'Нет' }}</dd>
           </div>
           <div *ngIf="selectedNode.meta?.plannedFinish">
@@ -119,43 +119,43 @@
             <dd>{{ selectedNode.meta?.batch }}</dd>
           </div>
           <div *ngIf="selectedNode.meta?.line">
-            <dt>Линия</dt>
+            <dt>Линия / станок</dt>
             <dd>{{ selectedNode.meta?.line }}</dd>
           </div>
         </dl>
 
         <div class="details-note">
-          Последнее обновление фиксируется через контекстный клик.
+          Данные можно расширять из MES/PLM, включая себестоимость, техкарты и контрольные точки.
         </div>
       </div>
     </ng-container>
 
     <ng-template #emptyState>
-      <div class="details-empty">Нет выбранного узла</div>
+      <div class="details-empty">Выберите узел, чтобы увидеть детали</div>
     </ng-template>
   </aside>
 
   <section class="map-panel card">
     <div class="map-header">
       <h3>Карта деталей</h3>
-      <p>Быстрый переход к узлам дерева.</p>
+      <p>Быстрые ссылки на листовые элементы. Переход в дерево — по клику.</p>
     </div>
     <div class="map-grid">
       <div class="map-item" *ngFor="let node of detailMap">
         <div>
           <p class="map-title">{{ node.name }}</p>
           <p class="map-meta">{{ getTypeLabel(node.type) }} · {{ getStatusLabel(node.status) }}</p>
-          <p class="map-deadline">Срок: {{ formatDeadline(node.deadline) }}</p>
+          <p class="map-deadline">Дедлайн: {{ formatDeadline(node.deadline) }}</p>
         </div>
-        <button class="map-btn" type="button" (click)="jumpToNode(node.id)">Показать</button>
+        <button class="map-btn" type="button" (click)="jumpToNode(node.id)">Перейти в дереве</button>
       </div>
     </div>
   </section>
 
   <section class="dash-panel card">
     <div class="dash-header">
-      <h3>Дашборды уровня</h3>
-      <p>Метрики для выбранного узла (или всего дерева).</p>
+      <h3>Дашборды по уровню</h3>
+      <p>Статусы внутри выбранного узла (или по всему дереву, если узел не выбран).</p>
     </div>
     <div class="dash-grid">
       <div class="dash-item" *ngFor="let metric of dashboardConfig">
@@ -173,7 +173,7 @@
       </div>
       <div class="dash-item">
         <div class="dash-label-row">
-          <span>Готовность, %</span>
+          <span>Выполнение, %</span>
           <span class="dash-value">{{ scopedSummary.completionPct }}%</span>
         </div>
         <div class="dash-bar">
