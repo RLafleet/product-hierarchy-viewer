@@ -1,197 +1,212 @@
 <div class="hierarchy-page">
   <header class="page-hero">
     <div class="hero-copy">
-      <span class="hero-kicker">Визуализация производственного дерева</span>
-      <h1>Штаб дипломного проекта</h1>
-      <p>
-        Контроль статусов, сроков и критичных узлов изделия в одном окне. Панорама дерева, карточка детали,
-        мини-карта и дашборды по уровням.
-      </p>
+      <span class="hero-kicker">Дерево составов</span>
+      <h1>Критичные детали и их ветки</h1>
+      <p>Цехи → машины → узлы → важные детали. Поиск и быстрый переход к ветке детали.</p>
       <div class="hero-tags">
-        <span class="tag">MVP</span>
-        <span class="tag">SVG-движок</span>
-        <span class="tag">Производство</span>
+        <span class="tag">Детали</span>
+        <span class="tag">Поиск</span>
+        <span class="tag">Состав</span>
       </div>
     </div>
 
     <div class="hero-metrics">
-      <div class="metric-card stagger">
+      <div class="metric-card">
         <span class="metric-label">Всего узлов</span>
         <span class="metric-value">{{ summary.total }}</span>
       </div>
-      <div class="metric-card stagger">
-        <span class="metric-label">В работе</span>
-        <span class="metric-value">{{ summary.inProgress }}</span>
+      <div class="metric-card">
+        <span class="metric-label">Деталей</span>
+        <span class="metric-value">{{ summary.details }}</span>
       </div>
-      <div class="metric-card stagger">
-        <span class="metric-label">Блокеры</span>
+      <div class="metric-card">
+        <span class="metric-label">Блок</span>
         <span class="metric-value">{{ summary.blocked }}</span>
       </div>
-      <div class="metric-card stagger">
-        <span class="metric-label">Готово</span>
-        <span class="metric-value">{{ summary.done }}</span>
+      <div class="metric-card">
+        <span class="metric-label">Ожидают</span>
+        <span class="metric-value">{{ summary.waiting }}</span>
       </div>
     </div>
   </header>
 
-  <section class="viewer-panel card">
+  <section class="viewer-panel card" id="partial-tree">
     <div class="viewer-header">
       <div>
-        <h2>Дерево изделий</h2>
-        <p>Режим пилота: колесо — зум, drag — панорама, double click — раскрытие узла.</p>
-      </div>
-      <div class="legend">
-        <span class="legend-item status-active">Активно</span>
-        <span class="legend-item status-in-progress">В работе</span>
-        <span class="legend-item status-blocked">Блокеры</span>
-        <span class="legend-item status-review">На проверке</span>
-        <span class="legend-item status-waiting">Ожидает</span>
-        <span class="legend-item status-done">Готово</span>
+        <h2>Дерево выбранного объекта</h2>
+        <p>Колесо — зум, drag — панорама, double click — раскрытие узла.</p>
       </div>
     </div>
 
     <div class="viewer-shell">
       <product-hierarchy-viewer
         class="viewer"
-        [data]="data"
+        [data]="treeData"
         [config]="config"
         [focusNodeId]="focusNodeId"
         (nodeSelected)="onNodeSelected($event)"
         (nodeToggled)="onNodeToggled($event)"
         (nodeUpdated)="onNodeUpdated($event)"
       ></product-hierarchy-viewer>
-      <div class="viewer-hint">Наведи и изучай карточку узла, панорамируй колесом и захватом.</div>
+      <div class="viewer-hint">Наведи на узел и изучай; панорамируй колесом и захватом.</div>
     </div>
   </section>
 
   <aside class="details-panel card">
     <div class="details-header">
-      <h2>Карточка узла</h2>
-      <p>Сверка сроков, статусов и ответственных по выбранному элементу.</p>
+      <h2>Карточка</h2>
+      <p>Статус, сроки, партия, цех, смена, себестоимость.</p>
     </div>
 
-    <ng-container *ngIf="selectedNode; else emptyState">
+    <ng-container *ngIf="selectedNode as node; else emptyState">
       <div class="details-card">
         <div class="details-title">
           <div>
-            <h3>{{ selectedNode.name }}</h3>
+            <h3>{{ node.name }}</h3>
             <p class="details-path" *ngIf="selectedPath">{{ selectedPath }}</p>
           </div>
           <div class="details-tags">
-            <span class="status-pill" [ngClass]="statusClass(selectedNode.status)">
-              {{ getStatusLabel(selectedNode.status) }}
+            <span class="status-pill" [ngClass]="statusClass(node.status)">
+              {{ getStatusLabel(node.status) }}
             </span>
-            <span class="type-pill">{{ getTypeLabel(selectedNode.type) }}</span>
+            <span class="type-pill">{{ getTypeLabel(node.type) }}</span>
           </div>
         </div>
 
         <dl class="details-grid">
           <div>
             <dt>ID</dt>
-            <dd>{{ selectedNode.id }}</dd>
-          </div>
-          <div>
-            <dt>Тип</dt>
-            <dd>{{ getTypeLabel(selectedNode.type) }}</dd>
+            <dd>{{ node.id }}</dd>
           </div>
           <div>
             <dt>Статус</dt>
-            <dd>{{ getStatusLabel(selectedNode.status) }}</dd>
+            <dd>{{ getStatusLabel(node.status) }}</dd>
           </div>
           <div>
             <dt>Дедлайн</dt>
-            <dd>{{ formatDeadline(selectedNode.deadline) }}</dd>
+            <dd>{{ formatDeadline(node.deadline) }}</dd>
           </div>
-          <div>
-            <dt>Лист?</dt>
-            <dd>{{ selectedNode.isLeaf || !selectedNode.children?.length ? 'Да' : 'Нет' }}</dd>
-          </div>
-          <div *ngIf="selectedNode.meta?.plannedFinish">
+          <div *ngIf="getMeta(node, 'plannedFinish') as plannedFinish">
             <dt>Плановая готовность</dt>
-            <dd>{{ formatDeadline(selectedNode.meta?.plannedFinish as string) }}</dd>
+            <dd>{{ formatDeadline(plannedFinish) }}</dd>
           </div>
-          <div *ngIf="selectedNode.meta?.responsible">
+          <div *ngIf="getMeta(node, 'actualFinish') as actualFinish">
+            <dt>Фактическая готовность</dt>
+            <dd>{{ formatDeadline(actualFinish) }}</dd>
+          </div>
+          <div *ngIf="getMeta(node, 'responsible') as responsible">
             <dt>Ответственный</dt>
-            <dd>{{ selectedNode.meta?.responsible }}</dd>
+            <dd>{{ responsible }}</dd>
           </div>
-          <div *ngIf="selectedNode.meta?.batch">
+          <div *ngIf="getMeta(node, 'batch') as batch">
             <dt>Партия</dt>
-            <dd>{{ selectedNode.meta?.batch }}</dd>
+            <dd>{{ batch }}</dd>
           </div>
-          <div *ngIf="selectedNode.meta?.line">
+          <div *ngIf="getMeta(node, 'line') as line">
             <dt>Линия / станок</dt>
-            <dd>{{ selectedNode.meta?.line }}</dd>
+            <dd>{{ line }}</dd>
+          </div>
+          <div *ngIf="getMeta(node, 'shop') as shop">
+            <dt>Цех</dt>
+            <dd>{{ shop }}</dd>
+          </div>
+          <div *ngIf="getMeta(node, 'shift') as shift">
+            <dt>Смена</dt>
+            <dd>{{ shift }}</dd>
+          </div>
+          <div *ngIf="getMeta(node, 'material') as material">
+            <dt>Материал</dt>
+            <dd>{{ material }}</dd>
+          </div>
+          <div *ngIf="getMeta(node, 'cost') as cost">
+            <dt>Себестоимость</dt>
+            <dd>{{ formatCost(cost) }}</dd>
           </div>
         </dl>
-
-        <div class="details-note">
-          Данные можно расширять из MES/PLM, включая себестоимость, техкарты и контрольные точки.
-        </div>
       </div>
     </ng-container>
 
     <ng-template #emptyState>
-      <div class="details-empty">Выберите узел, чтобы увидеть детали</div>
+      <div class="details-empty">Выберите узел в дереве</div>
     </ng-template>
   </aside>
 
   <section class="map-panel card">
     <div class="map-header">
-      <h3>Карта деталей</h3>
-      <p>Быстрые ссылки на листовые элементы. Переход в дерево — по клику.</p>
+      <div>
+        <h3>Карта главных объектов</h3>
+        <p>Поиск по названию или ID. Группы по цехам.</p>
+      </div>
+      <input
+        type="search"
+        class="map-search"
+        placeholder="Поиск объекта..."
+        [(ngModel)]="searchTerm"
+      />
     </div>
-    <div class="map-grid">
-      <div class="map-item" *ngFor="let node of detailMap">
-        <div>
-          <p class="map-title">{{ node.name }}</p>
-          <p class="map-meta">{{ getTypeLabel(node.type) }} · {{ getStatusLabel(node.status) }}</p>
-          <p class="map-deadline">Дедлайн: {{ formatDeadline(node.deadline) }}</p>
+
+    <div class="map-group" *ngFor="let group of mainGroups">
+      <div class="map-group-title">{{ group.shop }}</div>
+      <div class="map-grid">
+        <div class="map-item" *ngFor="let node of group.items">
+          <div>
+            <p class="map-title">{{ node.name }}</p>
+            <p class="map-meta">{{ getTypeLabel(node.type) }} · {{ getStatusLabel(node.status) }}</p>
+            <p class="map-deadline">Дедлайн: {{ formatDeadline(node.deadline) }}</p>
+          </div>
+          <button class="map-btn" type="button" (click)="jumpToNode(node.id)">Перейти к ветке</button>
         </div>
-        <button class="map-btn" type="button" (click)="jumpToNode(node.id)">Перейти в дереве</button>
       </div>
     </div>
   </section>
 
-  <section class="dash-panel card">
-    <div class="dash-header">
-      <h3>Дашборды по уровню</h3>
-      <p>Статусы внутри выбранного узла (или по всему дереву, если узел не выбран).</p>
+  <section class="map-details-panel card">
+    <div class="map-header">
+      <div>
+        <h3>Критичные детали</h3>
+        <p>Листовые элементы с флагом critical=true. Поиск по названию или ID.</p>
+      </div>
+      <input
+        type="search"
+        class="map-search"
+        placeholder="Поиск детали..."
+        [(ngModel)]="searchTerm"
+      />
     </div>
-    <div class="dash-grid">
-      <div class="dash-item" *ngFor="let metric of dashboardConfig">
-        <div class="dash-label-row">
-          <span>{{ metric.label }}</span>
-          <span class="dash-value">{{ scopedSummary[metric.key] }}</span>
-        </div>
-        <div class="dash-bar">
-          <span
-            class="dash-fill"
-            [style.background]="metric.color"
-            [style.width.%]="scopedSummary.total ? (scopedSummary[metric.key] / scopedSummary.total) * 100 : 0"
-          ></span>
-        </div>
-      </div>
-      <div class="dash-item">
-        <div class="dash-label-row">
-          <span>Выполнение, %</span>
-          <span class="dash-value">{{ scopedSummary.completionPct }}%</span>
-        </div>
-        <div class="dash-bar">
-          <span class="dash-fill ready" [style.width.%]="scopedSummary.completionPct"></span>
+
+    <div class="map-group" *ngFor="let group of criticalDetailsGroups">
+      <div class="map-group-title">{{ group.shop }}</div>
+      <div class="map-grid">
+        <div class="map-item" *ngFor="let node of group.items">
+          <div>
+            <p class="map-title">{{ node.name }}</p>
+            <p class="map-meta">{{ getTypeLabel(node.type) }} · {{ getStatusLabel(node.status) }}</p>
+            <p class="map-deadline">Дедлайн: {{ formatDeadline(node.deadline) }}</p>
+          </div>
+          <button class="map-btn" type="button" (click)="jumpToNode(node.id)">Перейти к ветке</button>
         </div>
       </div>
-      <div class="dash-item">
-        <div class="dash-label-row">
-          <span>Просрочено</span>
-          <span class="dash-value">{{ scopedSummary.overdue }}</span>
-        </div>
-        <div class="dash-bar">
-          <span
-            class="dash-fill overdue"
-            [style.width.%]="scopedSummary.total ? (scopedSummary.overdue / scopedSummary.total) * 100 : 0"
-          ></span>
-        </div>
+    </div>
+  </section>
+
+  <section class="viewer-panel card" id="full-tree">
+    <div class="viewer-header">
+      <div>
+        <h2>Полное дерево цехов и объектов</h2>
+        <p>Обзор всех цехов и объектов (без фильтров).</p>
       </div>
+    </div>
+    <div class="viewer-shell">
+      <product-hierarchy-viewer
+        class="viewer"
+        [data]="data"
+        [config]="config"
+        (nodeSelected)="onNodeSelected($event)"
+        (nodeToggled)="onNodeToggled($event)"
+        (nodeUpdated)="onNodeUpdated($event)"
+      ></product-hierarchy-viewer>
+      <div class="viewer-hint">Общий контекст: цехи, машины и детали.</div>
     </div>
   </section>
 </div>

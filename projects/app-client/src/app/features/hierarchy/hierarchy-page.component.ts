@@ -1,20 +1,16 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import {
-  HierarchyNode,
-  NodeUpdate,
-  ViewerConfig,
-} from 'product-hierarchy-viewer';
+import { HierarchyNode, NodeUpdate, ViewerConfig } from 'product-hierarchy-viewer';
 import { MOCK_HIERARCHY } from '../../mock/mock-hierarchy';
 
-interface HierarchySummary {
+interface Summary {
   total: number;
-  leaves: number;
+  details: number;
   active: number;
   inProgress: number;
   blocked: number;
-  review: number;
-  done: number;
   waiting: number;
+  done: number;
+  dueSoon: number;
   overdue: number;
   completionPct: number;
 }
@@ -27,6 +23,10 @@ interface HierarchySummary {
 })
 export class HierarchyPageComponent {
   data: HierarchyNode[] = MOCK_HIERARCHY;
+  searchTerm = '';
+
+  // Главные объекты (машины/платформы)
+  private readonly mainTypes = new Set(['product', 'platform']);
 
   config: ViewerConfig = {
     initialDepth: 2,
@@ -50,57 +50,109 @@ export class HierarchyPageComponent {
   statusLabels: Record<string, string> = {
     active: 'Активно',
     'in-progress': 'В работе',
-    blocked: 'Заблокировано',
-    review: 'На проверке',
-    waiting: 'В ожидании',
+    blocked: 'Блок',
+    review: 'Проверка',
+    waiting: 'Ожидание',
     done: 'Готово',
   };
 
   typeLabels: Record<string, string> = {
-    area: 'Цех / участок',
-    product: 'Изделие',
+    area: 'Цех',
+    product: 'Машина',
     assembly: 'Узел',
     part: 'Деталь',
     platform: 'Платформа',
     root: 'Корень',
   };
 
-  dashboardConfig: Array<{ key: keyof HierarchySummary; label: string; color: string }> = [
-    { key: 'active', label: 'Активно', color: '#0f766e' },
-    { key: 'inProgress', label: 'В работе', color: '#0284c7' },
-    { key: 'blocked', label: 'Блокеры', color: '#b42318' },
-    { key: 'review', label: 'На проверке', color: '#7c4a28' },
-    { key: 'waiting', label: 'Ожидает', color: '#475569' },
-    { key: 'done', label: 'Готово', color: '#15803d' },
-  ];
-
   selectedNode: HierarchyNode | null = null;
   selectedPath = '';
   focusNodeId: string | null = null;
+  selectedMainId: string | null = null;
 
   private flatNodes: HierarchyNode[] = this.flattenNodes(this.data);
-  summary: HierarchySummary = this.buildSummary(this.flatNodes);
 
   constructor() {
-    const first = this.flatNodes[0];
-    if (first) {
-      this.selectedNode = first;
-      this.focusNodeId = first.id;
-      this.selectedPath = this.buildPath(first.id);
+    const firstMain = this.mainObjects[0] ?? this.flatNodes[0];
+    if (firstMain) {
+      this.selectedMainId = firstMain.id;
+      this.selectedNode = firstMain;
+      this.focusNodeId = firstMain.id;
+      this.selectedPath = this.buildPath(firstMain.id);
     }
   }
 
-  get detailMap(): HierarchyNode[] {
-    return this.flatNodes
-      .filter((node) => node.parentId !== null && (node.isLeaf || !node.children?.length))
-      .sort((a, b) => (a.deadline ?? '').localeCompare(b.deadline ?? ''));
+  get summary(): Summary {
+    return this.buildSummary(this.flatNodes);
   }
 
-  get scopedSummary(): HierarchySummary {
-    if (this.selectedNode) {
-      return this.buildSummary(this.getSubtreeNodes(this.selectedNode.id));
+  get mainObjects(): HierarchyNode[] {
+    return this.flatNodes.filter((node) => this.mainTypes.has(node.type));
+  }
+
+  // Частичное дерево — только выбранный главный объект
+  get treeData(): HierarchyNode[] {
+    if (this.selectedMainId) {
+      const root = this.findNode(this.selectedMainId, this.data);
+      if (root) {
+        return [root];
+      }
     }
-    return this.summary;
+    const fallback = this.mainObjects[0];
+    return fallback ? [fallback] : this.data;
+  }
+
+  // Карта главных объектов (машины/платформы)
+  get mainGroups(): Array<{ shop: string; items: HierarchyNode[] }> {
+    const q = this.searchTerm.trim().toLowerCase();
+    const map = new Map<string, HierarchyNode[]>();
+
+    this.mainObjects.forEach((node) => {
+      if (
+        q &&
+        !node.name.toLowerCase().includes(q) &&
+        !node.id.toLowerCase().includes(q)
+      ) {
+        return;
+      }
+      const shop = (node.meta?.['shop'] as string) || 'Без цеха';
+      if (!map.has(shop)) {
+        map.set(shop, []);
+      }
+      map.get(shop)?.push(node);
+    });
+
+    return Array.from(map.entries()).map(([shop, items]) => ({ shop, items }));
+  }
+
+  // Карта критичных деталей (листья, не главные объекты)
+  get criticalDetailsGroups(): Array<{ shop: string; items: HierarchyNode[] }> {
+    const q = this.searchTerm.trim().toLowerCase();
+    const map = new Map<string, HierarchyNode[]>();
+
+    this.flatNodes
+      .filter(
+        (n) =>
+          !this.mainTypes.has(n.type) &&
+          (n.isLeaf || !n.children?.length) &&
+          n.meta?.['critical'] === 'true'
+      )
+      .forEach((node) => {
+        if (
+          q &&
+          !node.name.toLowerCase().includes(q) &&
+          !node.id.toLowerCase().includes(q)
+        ) {
+          return;
+        }
+        const shop = (node.meta?.['shop'] as string) || 'Без цеха';
+        if (!map.has(shop)) {
+          map.set(shop, []);
+        }
+        map.get(shop)?.push(node);
+      });
+
+    return Array.from(map.entries()).map(([shop, items]) => ({ shop, items }));
   }
 
   onNodeSelected(node: HierarchyNode): void {
@@ -119,12 +171,20 @@ export class HierarchyPageComponent {
     console.info('Изменение узла', update);
   }
 
+  // Переходы из карт: если кликнули деталь — поднимаемся к главному предку и переключаем дерево
   jumpToNode(nodeId: string): void {
     const target = this.flatNodes.find((node) => node.id === nodeId);
     if (target) {
+      if (this.mainTypes.has(target.type)) {
+        this.selectedMainId = target.id;
+      } else {
+        const mainAncestor = this.findMainAncestor(target);
+        this.selectedMainId = mainAncestor?.id ?? this.selectedMainId;
+      }
       this.selectedNode = target;
       this.focusNodeId = target.id;
       this.selectedPath = this.buildPath(target.id);
+      this.scrollToPartialTree();
     }
   }
 
@@ -146,6 +206,11 @@ export class HierarchyPageComponent {
     return this.typeLabels[type] ?? type;
   }
 
+  getMeta(node: HierarchyNode, key: string): string | undefined {
+    const value = node.meta?.[key];
+    return typeof value === 'string' ? value : undefined;
+  }
+
   formatDeadline(deadline?: string): string {
     if (!deadline) {
       return '—';
@@ -161,62 +226,27 @@ export class HierarchyPageComponent {
     }).format(parsed);
   }
 
-  private buildSummary(nodes: HierarchyNode[]): HierarchySummary {
-    const now = new Date();
-    const summary: HierarchySummary = {
-      total: 0,
-      leaves: 0,
-      active: 0,
-      inProgress: 0,
-      blocked: 0,
-      review: 0,
-      done: 0,
-      waiting: 0,
-      overdue: 0,
-      completionPct: 0,
-    };
+  formatCost(cost: unknown): string {
+    const value =
+      typeof cost === 'number'
+        ? cost
+        : typeof cost === 'string'
+          ? Number(cost.replace(/\s/g, '').replace(',', '.'))
+          : NaN;
+    if (!Number.isFinite(value)) {
+      return '—';
+    }
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB',
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
 
-    nodes.forEach((node) => {
-      summary.total += 1;
-      if (node.isLeaf || !node.children?.length) {
-        summary.leaves += 1;
-      }
-
-      switch (node.status) {
-        case 'active':
-          summary.active += 1;
-          break;
-        case 'in-progress':
-          summary.inProgress += 1;
-          break;
-        case 'blocked':
-          summary.blocked += 1;
-          break;
-        case 'review':
-          summary.review += 1;
-          break;
-        case 'waiting':
-          summary.waiting += 1;
-          break;
-        case 'done':
-          summary.done += 1;
-          break;
-        default:
-          break;
-      }
-
-      if (node.deadline) {
-        const deadlineDate = new Date(node.deadline);
-        if (!Number.isNaN(deadlineDate.getTime()) && deadlineDate < now && node.status !== 'done') {
-          summary.overdue += 1;
-        }
-      }
-    });
-
-    summary.completionPct =
-      summary.total > 0 ? Math.round((summary.done / summary.total) * 100) : 0;
-
-    return summary;
+  private scrollToPartialTree(): void {
+    setTimeout(() => {
+      document.getElementById('partial-tree')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
   }
 
   private flattenNodes(nodes: HierarchyNode[]): HierarchyNode[] {
@@ -233,22 +263,29 @@ export class HierarchyPageComponent {
     return acc;
   }
 
-  private getSubtreeNodes(nodeId: string): HierarchyNode[] {
-    const root = this.findNode(nodeId, this.data);
-    return root ? this.flattenNodes([root]) : this.flatNodes;
-  }
-
-  private findNode(targetId: string, nodes: HierarchyNode[]): HierarchyNode | null {
+  private findNode(id: string, nodes: HierarchyNode[]): HierarchyNode | null {
     for (const node of nodes) {
-      if (node.id === targetId) {
+      if (node.id === id) {
         return node;
       }
       if (node.children?.length) {
-        const found = this.findNode(targetId, node.children);
+        const found = this.findNode(id, node.children);
         if (found) {
           return found;
         }
       }
+    }
+    return null;
+  }
+
+  private findMainAncestor(node: HierarchyNode): HierarchyNode | null {
+    const map = new Map(this.flatNodes.map((n) => [n.id, n]));
+    let current: HierarchyNode | undefined | null = node;
+    while (current) {
+      if (this.mainTypes.has(current.type)) {
+        return current;
+      }
+      current = current.parentId ? map.get(current.parentId) : null;
     }
     return null;
   }
@@ -267,5 +304,65 @@ export class HierarchyPageComponent {
     }
 
     return path.join(' / ');
+  }
+
+  private buildSummary(nodes: HierarchyNode[]): Summary {
+    const now = new Date();
+    const soonThreshold = new Date(now);
+    soonThreshold.setDate(now.getDate() + 7);
+
+    const summary: Summary = {
+      total: 0,
+      details: 0,
+      active: 0,
+      inProgress: 0,
+      blocked: 0,
+      waiting: 0,
+      done: 0,
+      dueSoon: 0,
+      overdue: 0,
+      completionPct: 0,
+    };
+
+    nodes.forEach((node) => {
+      summary.total += 1;
+      const isLeaf = node.isLeaf || !node.children?.length;
+      if (isLeaf) {
+        summary.details += 1;
+      }
+      switch (node.status) {
+        case 'active':
+          summary.active += 1;
+          break;
+        case 'in-progress':
+          summary.inProgress += 1;
+          break;
+        case 'blocked':
+          summary.blocked += 1;
+          break;
+        case 'waiting':
+          summary.waiting += 1;
+          break;
+        case 'done':
+          summary.done += 1;
+          break;
+        default:
+          break;
+      }
+
+      if (node.deadline) {
+        const d = new Date(node.deadline);
+        if (!Number.isNaN(d.getTime())) {
+          if (d < now && node.status !== 'done') {
+            summary.overdue += 1;
+          } else if (d >= now && d <= soonThreshold && node.status !== 'done') {
+            summary.dueSoon += 1;
+          }
+        }
+      }
+    });
+
+    summary.completionPct = summary.total ? Math.round((summary.done / summary.total) * 100) : 0;
+    return summary;
   }
 }
