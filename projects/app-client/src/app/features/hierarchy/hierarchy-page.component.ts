@@ -25,7 +25,6 @@ export class HierarchyPageComponent {
   data: HierarchyNode[] = MOCK_HIERARCHY;
   searchTerm = '';
 
-  // Главные объекты (машины/платформы)
   private readonly mainTypes = new Set(['product', 'platform']);
 
   config: ViewerConfig = {
@@ -90,7 +89,6 @@ export class HierarchyPageComponent {
     return this.flatNodes.filter((node) => this.mainTypes.has(node.type));
   }
 
-  // Частичное дерево — только выбранный главный объект
   get treeData(): HierarchyNode[] {
     if (this.selectedMainId) {
       const root = this.findNode(this.selectedMainId, this.data);
@@ -102,7 +100,6 @@ export class HierarchyPageComponent {
     return fallback ? [fallback] : this.data;
   }
 
-  // Карта главных объектов (машины/платформы)
   get mainGroups(): Array<{ shop: string; items: HierarchyNode[] }> {
     const q = this.searchTerm.trim().toLowerCase();
     const map = new Map<string, HierarchyNode[]>();
@@ -125,7 +122,6 @@ export class HierarchyPageComponent {
     return Array.from(map.entries()).map(([shop, items]) => ({ shop, items }));
   }
 
-  // Карта критичных деталей (листья, не главные объекты)
   get criticalDetailsGroups(): Array<{ shop: string; items: HierarchyNode[] }> {
     const q = this.searchTerm.trim().toLowerCase();
     const map = new Map<string, HierarchyNode[]>();
@@ -171,7 +167,6 @@ export class HierarchyPageComponent {
     console.info('Изменение узла', update);
   }
 
-  // Переходы из карт: если кликнули деталь — поднимаемся к главному предку и переключаем дерево
   jumpToNode(nodeId: string): void {
     const target = this.flatNodes.find((node) => node.id === nodeId);
     if (target) {
