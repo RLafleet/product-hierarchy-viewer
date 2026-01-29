@@ -20,10 +20,10 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have as title 'MMZ Product Hierarchy'`, () => {
+  it(`should have as title 'TREE of objects'`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('MMZ Product Hierarchy');
+    expect(app.title).toEqual('TREE of objects');
   });
 
   it('should render header title', () => {
@@ -31,7 +31,7 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand-title')?.textContent).toContain(
-      'MMZ Product Hierarchy'
+      'TREE of objects'
     );
   });
 });
